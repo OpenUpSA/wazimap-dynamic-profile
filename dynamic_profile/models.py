@@ -9,6 +9,7 @@ from wazimap.models import FieldTable
 
 class Profile(models.Model):
     name = models.CharField(max_length=20)
+    display_order = models.IntegerField(default=1)
 
     def __str__(self):
         return self.name
@@ -32,6 +33,7 @@ class IndicatorProfile(models.Model):
         "self", on_delete=models.CASCADE, null=True, blank=True
     )
     group_remainder = models.IntegerField(null=True, blank=True)
+    disclaimer_text = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return self.header
