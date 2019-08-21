@@ -20,15 +20,9 @@ def merge_dicts(this, other, other_key):
     Recursively merges 'other' dict into 'this' dict. In particular
     it merges the leaf nodes specified in MERGE_KEYS.
     """
-    print("*************************************************")
-    print("Starting to merge dictionaries")
     for profile, indicators in this.iteritems():
-        print(profile)
         for counter, indicator in enumerate(indicators):
-            print("Working on ")
-            print(indicator)
             if "stat_values" in indicator:
-                print(indicator["stat_values"])
                 for key, value in indicator["stat_values"].iteritems():
                     if key != "metadata":
                         try:
@@ -41,17 +35,6 @@ def merge_dicts(this, other, other_key):
                         except KeyError:
                             value["numerators"][other_key] = None
                             value["values"][other_key] = None
-
-                        # exit()
-
-    print("*****************************************************")
-
-    #         for key, values in stat_values.iteritems():
-    #             if key in MERGE_KEYS:
-    #                 if key in other:
-    #                     values[other_key] = other[key]["this"]
-    #                 elif isinstance(values, dict):
-    #                     merge_dicts(values, other[key], other_key)
 
 
 def indicator_calculation(
@@ -146,7 +129,7 @@ def get_dynamic_profiles(geo, session):
                 order_by=profile.order_by,
                 exclude_zero=profile.exclude_zero,
             )
-        except DataNotFound:
+        except DataNotFound as error:
             indicator_profiles[profile.profile.name].append(
                 {
                     "header": profile.header,
