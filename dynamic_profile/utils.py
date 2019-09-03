@@ -42,6 +42,7 @@ def indicator_calculation(
     session,
     column_name,
     table_name,
+    table_universe,
     order_by=False,
     percent=False,
     exclude_zero=False,
@@ -54,7 +55,7 @@ def indicator_calculation(
             [column_name],
             geo,
             session,
-            table_universe="Senior",
+            table_universe=table_universe,
             table_dataset="Census and Community Survey",
             order_by="-total",
             exclude_zero=exclude_zero,
@@ -64,6 +65,7 @@ def indicator_calculation(
             [column_name],
             geo,
             session,
+            table_universe=table_universe,
             table_dataset="Census and Community Survey",
             exclude_zero=exclude_zero,
         )
@@ -88,6 +90,13 @@ def column_field_value(distribution, column_field=None):
     if column_field:
         return distribution[column_field]["values"]["this"]
     return None
+
+
+def get_total_population(geo, session):
+    pop_dist_data, total_census_pop = get_stat_data(
+        ["population group"], geo, session, table_dataset="Census and Community Survey"
+    )
+    return total_census_pop
 
 
 def group_indicators(indicator_profiles):
@@ -126,6 +135,7 @@ def get_dynamic_profiles(geo, session):
                 session,
                 column_name=profile.column_name,
                 table_name=profile.table_name.name,
+                table_universe=profile.universe,
                 order_by=profile.order_by,
                 exclude_zero=profile.exclude_zero,
             )
@@ -172,6 +182,7 @@ def get_dynamic_profiles(geo, session):
                     "children": [],
                     "data": True,
                     "disclaimer_text": profile.disclaimer_text,
+                    "header_extra": get_total_population(geo, session),
                 }
             )
             indicator_profiles[profile.profile.name] = sorted(
