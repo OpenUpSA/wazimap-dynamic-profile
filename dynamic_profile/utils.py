@@ -15,6 +15,54 @@ from dynamic_profile.models import Profile, IndicatorProfile
 MERGE_KEYS = set(["values", "numerators", "error"])
 
 
+class GenerateIndicator:
+    def __init__(self, geo, session, profile, *args, **kwargs):
+        self.geo = geo
+        self.session = session
+        self.profile = profile
+
+    def header(self):
+        """
+        This will contain any information relating to noteworthy stats about the indicator.
+        This must return a dictionary
+        """
+        return {'header': [{'title': self.profile.header,
+                            'summary': self.profile.summary,
+                            'info': self.disclaimer_text}]}
+
+    def chart(self):
+        """
+        Details about the chart
+        """
+        return {'chart_title': self.profile.chart_title,
+                'chart_type': self.profile.chart_type}
+
+    def children(self):
+        """
+        Group certain indicators with this indicator
+        """
+        return {'children': []}
+
+    def calculation(self):
+        """
+        Get results for this indicator.
+        """
+        return stats
+
+    def create():
+        """
+        Create the dictionary containing all the details about the indicator
+        """
+        
+    def entry(self):
+        """
+        main entry point to class
+        """
+        
+
+
+
+
 def merge_dicts(this, other, other_key):
     """
     Recursively merges 'other' dict into 'this' dict. In particular
@@ -82,19 +130,6 @@ class GenerateIndicator:
         if column_field:
             return distribution[column_field]["values"]["this"]
         return None
-
-    def percent_total(self):
-        """
-        calculate the percent of a distribution over the full total.
-        Eg: percentage of senior citizens to the entire population
-        """
-        return
-
-    def calculation(self):
-        """
-        calculate the stats for an indicator.
-        """
-        return
 
     def calculate_highest(self, distribution, total, highest_type):
         """
@@ -227,7 +262,13 @@ def get_dynamic_profiles(geo, session):
     indicator_profiles = OrderedDict(
         (p.name, []) for p in Profile.objects.order_by("display_order").all()
     )
+    for i in IndicatorProfile.objects.all():
+        indicator = GenerateIndicator(geo,session, i)
+    indicator_profiles = group_indicators(indicator_profiles)
+    return indicator_profiles
+    
     for profile in IndicatorProfile.objects.all():
+        
         try:
             distribution, total = indicator_calculation(
                 geo,
