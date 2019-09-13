@@ -19,6 +19,7 @@ class Profile(models.Model):
 class IndicatorProfile(models.Model):
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE)
     table_name = models.ForeignKey(FieldTable, on_delete=models.CASCADE)
+    universe = models.CharField(max_length=20, default="Population")
     field_name = models.CharField(max_length=50, null=True)
     title = models.CharField(max_length=30)
     summary = models.CharField(max_length=100)

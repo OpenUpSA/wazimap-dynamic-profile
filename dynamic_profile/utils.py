@@ -37,16 +37,44 @@ class GenerateIndicator:
         return {'chart_title': self.profile.chart_title,
                 'chart_type': self.profile.chart_type}
 
-    def children(self):
+    def merge_parent_indicators(self, indicator_profiles):
         """
-        Group certain indicators with this indicator
+        We need to go through all the indicators and check whether they have a parent profile indicator.
+        If they do have a parent, we need to append that indicator to the parent indicator
+        We will then remove all the top level indicators that have a parent.
         """
-        return {'children': []}
+        for profile, values in indicator_profiles.items():
+            for indicator in values:
+                if indicator["parent_profile"]:
+                    header = indicator["parent_profile"]
+                    for i in values:
+                        if i["header"] == header:
+                            i["has_children"] = True
+                            i["children"].append(indicator)
+                            break
+
+        for profile in indicator_profiles.keys():
+            indicator_profiles[profile] = [
+                indicator
+                for indicator in indicator_profiles[profile]
+                if indicator["parent_profile"] is None
+            ]
+
+        return indicator_profiles
+
 
     def calculation(self):
         """
         Get results for this indicator.
         """
+        data, total = get_stat_data(
+            [column_name],
+            geo,
+            session,
+            table_universe=table_universe,
+            table_dataset="Census and Community Survey",
+            exclude_zero=exclude_zero,
+        )
         return stats
 
     def create():
@@ -86,59 +114,7 @@ def merge_dicts(this, other, other_key):
 
 
 class GenerateIndicator:
-    def __init__(self, geo, session):
-        self.geo = geo
-        self.session = session
-        self.indicator_profiles = self.profile_order()
-
-    def profile_order(self):
-        return OrderedDict(
-            (p.name, []) for p in Profile.objects.order_by("display_order").all()
-        )
         
-
-    def group_indicators(self, indicator_profiles):
-        """
-        We need to go through all the indicators and check whether they have a parent profile indicator.
-        If they do have a parent, we need to append that indicator to the parent indicator
-        We will then remove all the top level indicators that have a parent.
-        """
-        for profile, values in indicator_profiles.items():
-            for indicator in values:
-                if indicator["parent_profile"]:
-                    header = indicator["parent_profile"]
-                    for i in values:
-                        if i["header"] == header:
-                            i["has_children"] = True
-                            i["children"].append(indicator)
-                            break
-
-        for profile in indicator_profiles.keys():
-            indicator_profiles[profile] = [
-                indicator
-                for indicator in indicator_profiles[profile]
-                if indicator["parent_profile"] is None
-            ]
-
-        return indicator_profiles
-
-    def column_field_value(self, distribution, column_field=None):
-        """
-        Pick out a specific indicator value
-        Eg: picking a specific race groups values, generally used with calculate highest.
-        """
-        if column_field:
-            return distribution[column_field]["values"]["this"]
-        return None
-
-    def calculate_highest(self, distribution, total, highest_type):
-        """
-        Calculate the highest in the distribution or the entire total of the distribution
-        """
-        if highest_type == "Total":
-            return total
-        elif highest_type == "Distribution":
-            return distribution[distribution.keys()[0]]
 
     def generate(self, profile):
         """
@@ -230,6 +206,7 @@ def indicator_calculation(
     session,
     column_name,
     table_name,
+    table_universe,
     order_by=False,
     percent=False,
     exclude_zero=False,
@@ -242,6 +219,7 @@ def indicator_calculation(
             [column_name],
             geo,
             session,
+            table_universe=table_universe,
             table_dataset="Census and Community Survey",
             order_by="-total",
             exclude_zero=exclude_zero,
@@ -251,6 +229,7 @@ def indicator_calculation(
             [column_name],
             geo,
             session,
+            table_universe=table_universe,
             table_dataset="Census and Community Survey",
             exclude_zero=exclude_zero,
         )
@@ -264,9 +243,19 @@ def get_dynamic_profiles(geo, session):
     )
     for i in IndicatorProfile.objects.all():
         indicator = GenerateIndicator(geo,session, i)
+        indicator_profiles[i.profile.name].append(indicator)
+
+    # Sort all the indicators for each profile
+    indicator_profiles[profile.profile.name] = sorted(
+                indicator_profiles[profile.profile.name],
+                key=lambda profile: profile["display_order"],
+            )
+
+    # group parent and children indicators
     indicator_profiles = group_indicators(indicator_profiles)
     return indicator_profiles
-    
+
+
     for profile in IndicatorProfile.objects.all():
         
         try:
@@ -275,6 +264,7 @@ def get_dynamic_profiles(geo, session):
                 session,
                 column_name=profile.column_name,
                 table_name=profile.table_name.name,
+                table_universe=profile.universe,
                 order_by=profile.order_by,
                 exclude_zero=profile.exclude_zero,
             )
@@ -293,10 +283,6 @@ def get_dynamic_profiles(geo, session):
                     "has_children": False,
                     "children": [],
                 }
-            )
-            indicator_profiles[profile.profile.name] = sorted(
-                indicator_profiles[profile.profile.name],
-                key=lambda profile: profile["display_order"],
             )
         else:
             if profile.group_remainder:
@@ -323,11 +309,8 @@ def get_dynamic_profiles(geo, session):
                     "children": [],
                     "data": True,
                     "disclaimer_text": profile.disclaimer_text,
+                    "header_extra": get_total_population(geo, session),
                 }
-            )
-            indicator_profiles[profile.profile.name] = sorted(
-                indicator_profiles[profile.profile.name],
-                key=lambda profile: profile["display_order"],
             )
     indicator_profiles = group_indicators(indicator_profiles)
 
