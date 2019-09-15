@@ -28,9 +28,9 @@ class IndicatorProfile(models.Model):
     order_by = models.CharField(max_length=10, default="-total")
     exclude_zero = models.BooleanField(default=False)
     percent = models.BooleanField(default=True)
-    recode = HStoreField(null=True)
-    key_order = ArrayField(null=True)
-    exclude = ArrayField(null=True)
+    recode = HStoreField(null=True, blank=True)
+    key_order = ArrayField(models.CharField(max_length=20), null=True, blank=True)
+    exclude = ArrayField(models.CharField(max_length=20), null=True, blank=True)
     display_order = models.IntegerField(default=1)
     parent_profile = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True
@@ -39,4 +39,4 @@ class IndicatorProfile(models.Model):
     info = models.TextField(null=True, blank=True)
 
     def __str__(self):
-        return self.header
+        return self.title

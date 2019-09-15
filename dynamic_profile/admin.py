@@ -15,7 +15,6 @@ class IndicatorProfileForm(forms.ModelForm):
     MAX_VALUE_CHOICES = (("Total", "Total"), ("Distribution", "Distribution"))
     DISPLAY_CHOICES = ((1, "1"), (2, "2"), (3, "3"), (4, "4"), (5, "5"), (6, "6"))
     chart_type = forms.ChoiceField(choices=CHART_CHOICES)
-    maximum_value = forms.ChoiceField(choices=MAX_VALUE_CHOICES)
     display_order = forms.ChoiceField(choices=DISPLAY_CHOICES)
 
 

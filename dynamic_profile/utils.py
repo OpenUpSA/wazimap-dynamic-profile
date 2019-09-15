@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from wazimap.models.data import DataNotFound
 from wazimap.data.utils import (
     collapse_categories,
@@ -26,69 +26,116 @@ class GenerateIndicator:
         This will contain any information relating to noteworthy stats about the indicator.
         This must return a dictionary
         """
-        return {'header': [{'title': self.profile.header,
-                            'summary': self.profile.summary,
-                            'info': self.disclaimer_text}]}
+        return {
+            "title": self.profile.title,
+            "summary": self.profile.summary,
+            "headers": [],
+        }
 
     def chart(self):
         """
         Details about the chart
         """
-        return {'chart_title': self.profile.chart_title,
-                'chart_type': self.profile.chart_type}
-
-    def merge_parent_indicators(self, indicator_profiles):
-        """
-        We need to go through all the indicators and check whether they have a parent profile indicator.
-        If they do have a parent, we need to append that indicator to the parent indicator
-        We will then remove all the top level indicators that have a parent.
-        """
-        for profile, values in indicator_profiles.items():
-            for indicator in values:
-                if indicator["parent_profile"]:
-                    header = indicator["parent_profile"]
-                    for i in values:
-                        if i["header"] == header:
-                            i["has_children"] = True
-                            i["children"].append(indicator)
-                            break
-
-        for profile in indicator_profiles.keys():
-            indicator_profiles[profile] = [
-                indicator
-                for indicator in indicator_profiles[profile]
-                if indicator["parent_profile"] is None
-            ]
-
-        return indicator_profiles
-
+        return {
+            "chart_title": self.profile.chart_title,
+            "chart_type": self.profile.chart_type,
+        }
 
     def calculation(self):
         """
         Get results for this indicator.
         """
-        data, total = get_stat_data(
-            [column_name],
-            geo,
-            session,
-            table_universe=table_universe,
-            table_dataset="Census and Community Survey",
-            exclude_zero=exclude_zero,
-        )
-        return stats
+        try:
+            distribution, total = get_stat_data(
+                [self.profile.field_name],
+                self.geo,
+                self.session,
+                table_universe=self.profile.universe,
+                table_dataset="Census and Community Survey",
+                exclude_zero=self.profile.exclude_zero,
+                percent=self.profile.percent,
+                recode=self.profile.recode,
+                key_order=self.profile.key_order,
+                exclude=self.profile.exclude,
+            )
+            return {"stat_values": distribution, "total": total}
+        except DataNotFound:
+            return {}
 
-    def create():
+    def create(self):
         """
         Create the dictionary containing all the details about the indicator
         """
-        
-    def entry(self):
-        """
-        main entry point to class
-        """
-        
+        meta = {
+            "display_order": self.profile.display_order,
+            "parent_profile": self.profile.parent_profile,
+            "children": [],
+        }
+        dicts = [self.header(), self.chart(), self.calculation(), meta]
+        indicator = {}
+        for d in dicts:
+            indicator.update(d)
+        return indicator
 
 
+class BuildProfile:
+    """
+    Configure how the profile with its indicators will be built.
+    """
+
+    def __init__(self, name, geo, session):
+        self.name = name
+        self.geo = geo
+        self.session = session
+        self.indicators = []
+
+    def create(self):
+        for model_indicator in IndicatorProfile.objects.filter(profile__name=self.name):
+            new_indicator = GenerateIndicator(self.geo, self.session, model_indicator)
+            self.indicators.append(new_indicator.create())
+        self.sort()
+        self.merge()
+        return self.indicators
+
+    def sort(self):
+        """
+        Sort Indicators accoring to the display_order
+        """
+        self.indicators = sorted(self.indicators, key=lambda i: i["display_order"])
+
+    def merge(self):
+        """
+        We need to go through all the indicators and check whether they have a parent profile indicator.
+        If they do have a parent, we need to append that indicator to the parent indicator
+        We will then remove all the top level indicators that have a parent.
+        """
+        for indictor in self.indicators:
+            title = indictor.get("parent_profile", None)
+            if not None:
+                for other in self.indicators:
+                    if other["title"] == title:
+                        other["children"].append(indictor)
+                        break
+
+
+class Section:
+    """
+    Build a section
+    """
+
+    def __init__(self, geo, session):
+        self.geo = geo
+        self.session = session
+        self.profiles = OrderedDict(
+            (p.name, []) for p in Profile.objects.order_by("display_order").all()
+        )
+
+    def build(self):
+        for profile_name in self.profiles.keys():
+            profile = BuildProfile(profile_name, self.geo, self.session)
+            self.profiles[profile_name] = profile.create()
+
+        return self.profiles
 
 
 def merge_dicts(this, other, other_key):
@@ -111,207 +158,3 @@ def merge_dicts(this, other, other_key):
                         except KeyError:
                             value["numerators"][other_key] = None
                             value["values"][other_key] = None
-
-
-class GenerateIndicator:
-        
-
-    def generate(self, profile):
-        """
-        Create the indicator with all its values
-        """
-        try:
-            distribution, total = indicator_calculation(
-                    geo,
-                    session,
-                    column_name=profile.column_name,
-                    table_name=profile.table_name.name,
-                    order_by=profile.order_by,
-                    exclude_zero=profile.exclude_zero,
-                )
-        except:
-            return
-        else:
-            pass
-            
-    for profile in IndicatorProfile.objects.all():
-            try:
-                distribution, total = indicator_calculation(
-                    geo,
-                    session,
-                    column_name=profile.column_name,
-                    table_name=profile.table_name.name,
-                    order_by=profile.order_by,
-                    exclude_zero=profile.exclude_zero,
-                )
-            except DataNotFound as error:
-                print(error)
-                exit()
-                indicator_profiles[profile.profile.name].append(
-                    {
-                        "header": profile.header,
-                        "summary": profile.summary,
-                        "display_order": profile.display_order,
-                        "data": False,
-                        "parent_profile": profile.parent_profile.header
-                        if profile.parent_profile
-                        else None,
-                        "has_children": False,
-                        "children": [],
-                    }
-                )
-                indicator_profiles[profile.profile.name] = sorted(
-                    indicator_profiles[profile.profile.name],
-                    key=lambda profile: profile["display_order"],
-                )
-            else:
-                if profile.group_remainder:
-                    group_remainder(distribution, profile.group_remainder)
-                indicator_profiles[profile.profile.name].append(
-                    {
-                        "header": profile.header,
-                        "summary": profile.summary,
-                        "chart_title": profile.chart_title,
-                        "stat_values": distribution,
-                        "total": total,
-                        "distribution_maxima": calculate_highest(
-                            distribution, total, profile.maximum_value
-                        ),
-                        "chart_type": profile.chart_type,
-                        "column_field": column_field_value(
-                            distribution, profile.column_field
-                        ),
-                        "display_order": profile.display_order,
-                        "parent_profile": profile.parent_profile.header
-                        if profile.parent_profile
-                        else None,
-                        "has_children": False,
-                        "children": [],
-                        "data": True,
-                        "disclaimer_text": profile.disclaimer_text,
-                    }
-                )
-                indicator_profiles[profile.profile.name] = sorted(
-                    indicator_profiles[profile.profile.name],
-                    key=lambda profile: profile["display_order"],
-                )
-        indicator_profiles = group_indicators(indicator_profiles)
-
-        return indicator_profiles
-        
-
-
-def indicator_calculation(
-    geo,
-    session,
-    column_name,
-    table_name,
-    table_universe,
-    order_by=False,
-    percent=False,
-    exclude_zero=False,
-):
-    """
-    Get the statistics for the indicator
-    """
-    if order_by:
-        data, total = get_stat_data(
-            [column_name],
-            geo,
-            session,
-            table_universe=table_universe,
-            table_dataset="Census and Community Survey",
-            order_by="-total",
-            exclude_zero=exclude_zero,
-        )
-    else:
-        data, total = get_stat_data(
-            [column_name],
-            geo,
-            session,
-            table_universe=table_universe,
-            table_dataset="Census and Community Survey",
-            exclude_zero=exclude_zero,
-        )
-
-    return data, total
-
-
-def get_dynamic_profiles(geo, session):
-    indicator_profiles = OrderedDict(
-        (p.name, []) for p in Profile.objects.order_by("display_order").all()
-    )
-    for i in IndicatorProfile.objects.all():
-        indicator = GenerateIndicator(geo,session, i)
-        indicator_profiles[i.profile.name].append(indicator)
-
-    # Sort all the indicators for each profile
-    indicator_profiles[profile.profile.name] = sorted(
-                indicator_profiles[profile.profile.name],
-                key=lambda profile: profile["display_order"],
-            )
-
-    # group parent and children indicators
-    indicator_profiles = group_indicators(indicator_profiles)
-    return indicator_profiles
-
-
-    for profile in IndicatorProfile.objects.all():
-        
-        try:
-            distribution, total = indicator_calculation(
-                geo,
-                session,
-                column_name=profile.column_name,
-                table_name=profile.table_name.name,
-                table_universe=profile.universe,
-                order_by=profile.order_by,
-                exclude_zero=profile.exclude_zero,
-            )
-        except DataNotFound as error:
-            print(error)
-            exit()
-            indicator_profiles[profile.profile.name].append(
-                {
-                    "header": profile.header,
-                    "summary": profile.summary,
-                    "display_order": profile.display_order,
-                    "data": False,
-                    "parent_profile": profile.parent_profile.header
-                    if profile.parent_profile
-                    else None,
-                    "has_children": False,
-                    "children": [],
-                }
-            )
-        else:
-            if profile.group_remainder:
-                group_remainder(distribution, profile.group_remainder)
-            indicator_profiles[profile.profile.name].append(
-                {
-                    "header": profile.header,
-                    "summary": profile.summary,
-                    "chart_title": profile.chart_title,
-                    "stat_values": distribution,
-                    "total": total,
-                    "distribution_maxima": calculate_highest(
-                        distribution, total, profile.maximum_value
-                    ),
-                    "chart_type": profile.chart_type,
-                    "column_field": column_field_value(
-                        distribution, profile.column_field
-                    ),
-                    "display_order": profile.display_order,
-                    "parent_profile": profile.parent_profile.header
-                    if profile.parent_profile
-                    else None,
-                    "has_children": False,
-                    "children": [],
-                    "data": True,
-                    "disclaimer_text": profile.disclaimer_text,
-                    "header_extra": get_total_population(geo, session),
-                }
-            )
-    indicator_profiles = group_indicators(indicator_profiles)
-
-    return indicator_profiles
