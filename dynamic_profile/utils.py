@@ -15,7 +15,7 @@ from dynamic_profile.models import Profile, IndicatorProfile
 MERGE_KEYS = set(["values", "numerators", "error"])
 
 
-class GenerateIndicator:
+class BuildIndicator:
     def __init__(self, geo, session, profile, *args, **kwargs):
         self.geo = geo
         self.session = session
@@ -91,7 +91,7 @@ class BuildProfile:
 
     def create(self):
         for model_indicator in IndicatorProfile.objects.filter(profile__name=self.name):
-            new_indicator = GenerateIndicator(self.geo, self.session, model_indicator)
+            new_indicator = BuildIndicator(self.geo, self.session, model_indicator)
             self.indicators.append(new_indicator.create())
         self.sort()
         self.merge()
