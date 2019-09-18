@@ -15,7 +15,7 @@ from dynamic_profile.models import Profile, IndicatorProfile
 MERGE_KEYS = set(["values", "numerators", "error"])
 
 
-class BuildIndicator:
+class BuildIndicator(object):
     def __init__(self, geo, session, profile, *args, **kwargs):
         self.geo = geo
         self.session = session
@@ -24,13 +24,15 @@ class BuildIndicator:
     def header(self):
         """
         This will contain any information relating to noteworthy stats about the indicator.
-        This must return a dictionary
+        By default this will return the highest value with in the indicator
         """
-        return {
-            "title": self.profile.title,
-            "summary": self.profile.summary,
-            "headers": [],
-        }
+        header = {"title": self.profile.title, "summary": self.profile.summary}
+        if self.distribution:
+            value = self.distribution[self.distribution.keys()[0]]
+            header.update({"value": value["name"]})
+        else:
+            header.update({"value": ""})
+        return header
 
     def chart(self):
         """
@@ -57,7 +59,10 @@ class BuildIndicator:
                 recode=self.profile.recode,
                 key_order=self.profile.key_order,
                 exclude=self.profile.exclude,
+                order_by=self.profile.order_by,
             )
+            group_remainder(distribution, self.profile.group_remainder)
+            self.distribution = distribution
             return {"stat_values": distribution, "total": total}
         except DataNotFound:
             return {}
@@ -71,14 +76,14 @@ class BuildIndicator:
             "parent_profile": self.profile.parent_profile,
             "children": [],
         }
-        dicts = [self.header(), self.chart(), self.calculation(), meta]
+        dicts = [self.chart(), self.calculation(), meta, self.header()]
         indicator = {}
         for d in dicts:
             indicator.update(d)
         return indicator
 
 
-class BuildProfile:
+class BuildProfile(object):
     """
     Configure how the profile with its indicators will be built.
     """
@@ -89,9 +94,9 @@ class BuildProfile:
         self.session = session
         self.indicators = []
 
-    def create(self):
+    def create(self, cls_indicator):
         for model_indicator in IndicatorProfile.objects.filter(profile__name=self.name):
-            new_indicator = BuildIndicator(self.geo, self.session, model_indicator)
+            new_indicator = cls_indicator(self.geo, self.session, model_indicator)
             self.indicators.append(new_indicator.create())
         self.sort()
         self.merge()
@@ -118,7 +123,7 @@ class BuildProfile:
                         break
 
 
-class Section:
+class Section(object):
     """
     Build a section
     """
@@ -130,10 +135,10 @@ class Section:
             (p.name, []) for p in Profile.objects.order_by("display_order").all()
         )
 
-    def build(self):
+    def build(self, cls_profile, cls_indicator):
         for profile_name in self.profiles.keys():
-            profile = BuildProfile(profile_name, self.geo, self.session)
-            self.profiles[profile_name] = profile.create()
+            profile = cls_profile(profile_name, self.geo, self.session)
+            self.profiles[profile_name] = profile.create(cls_indicator)
 
         return self.profiles
 
