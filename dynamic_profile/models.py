@@ -35,7 +35,7 @@ class IndicatorProfile(models.Model):
     parent_profile = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True
     )
-    group_remainder = models.IntegerField(null=True, blank=True)
+    group_remainder = models.IntegerField(default=20, null=True, blank=True)
     info = models.TextField(null=True, blank=True)
 
     def __str__(self):
