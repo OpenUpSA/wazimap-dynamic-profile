@@ -27,11 +27,13 @@ class BuildIndicator(object):
         By default this will return the highest value with in the indicator
         """
         header = {"title": self.profile.title, "summary": self.profile.summary}
-        if self.distribution:
-            value = self.distribution[self.distribution.keys()[0]]
-            header.update({"value": value["name"]})
-        else:
+        try:
+            if self.distribution:
+                value = self.distribution[self.distribution.keys()[0]]
+                header.update({"value": value["name"]})
+        except AttributeError:
             header.update({"value": ""})
+
         return header
 
     def chart(self):
