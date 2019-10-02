@@ -55,7 +55,7 @@ class BuildIndicator(object):
                 self.geo,
                 self.session,
                 table_universe=self.profile.universe,
-                table_dataset="Census and Community Survey",
+                table_dataset=self.profile.dataset,
                 exclude_zero=self.profile.exclude_zero,
                 percent=self.profile.percent,
                 recode=self.profile.recode,
