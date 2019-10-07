@@ -83,7 +83,12 @@ class BuildIndicator(object):
             "children": [],
             "parent_profile": parent_profile,
         }
-        dicts = [self.chart(), self.calculation(), meta, self.header()]
+
+    def create(self):
+        """
+        Create the dictionary containing all the details about the indicator
+        """
+        dicts = [self.chart(), self.meta(), self.header(), self.calculation()]
         indicator = {}
         for d in dicts:
             indicator.update(d)
@@ -128,6 +133,9 @@ class BuildProfile(object):
                     if other["title"] == title:
                         other["children"].append(indictor)
                         break
+        self.indicators = [
+            indictor for indictor in self.indicators if not indictor["parent_profile"]
+        ]
 
 
 class Section(object):
@@ -155,10 +163,10 @@ def merge_dicts(this, other, other_key):
     Recursively merges 'other' dict into 'this' dict. In particular
     it merges the leaf nodes specified in MERGE_KEYS.
     """
-    for profile, indicators in this.iteritems():
+    for profile, indicators in this.items():
         for counter, indicator in enumerate(indicators):
             if "stat_values" in indicator:
-                for key, value in indicator["stat_values"].iteritems():
+                for key, value in indicator["stat_values"].items():
                     if key != "metadata":
                         try:
                             value["numerators"][other_key] = other[profile][counter][
