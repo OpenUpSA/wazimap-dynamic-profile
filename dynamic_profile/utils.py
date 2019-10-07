@@ -29,7 +29,7 @@ class BuildIndicator(object):
         header = {"title": self.profile.title, "summary": self.profile.summary}
         try:
             if self.distribution:
-                value = self.distribution[self.distribution.keys()[0]]
+                value = self.distribution[list(self.distribution.keys())[0]]
                 header.update({"value": value["name"]})
         except AttributeError:
             header.update({"value": ""})
