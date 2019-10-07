@@ -69,14 +69,19 @@ class BuildIndicator(object):
         except DataNotFound:
             return {}
 
-    def create(self):
+    def meta(self):
         """
-        Create the dictionary containing all the details about the indicator
+        Any other information about the indicator
         """
-        meta = {
+        if self.profile.parent_profile:
+            parent_profile = self.profile.parent_profile.title
+        else:
+            parent_profile = None
+
+        return {
             "display_order": self.profile.display_order,
-            "parent_profile": self.profile.parent_profile,
             "children": [],
+            "parent_profile": parent_profile,
         }
         dicts = [self.chart(), self.calculation(), meta, self.header()]
         indicator = {}
