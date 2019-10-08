@@ -88,7 +88,7 @@ class BuildIndicator(object):
         """
         Create the dictionary containing all the details about the indicator
         """
-        dicts = [self.chart(), self.meta(), self.header(), self.calculation()]
+        dicts = [self.chart(), self.meta(), self.calculation(), self.header()]
         indicator = {}
         for d in dicts:
             indicator.update(d)
