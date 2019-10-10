@@ -10,9 +10,80 @@ from wazimap.data.utils import (
     current_context,
     dataset_context,
 )
+from census.profile import find_dicts_with_key
+from census.utils import get_ratio
+from wazimap.geo import geo_data
+from itertools import repeat
 from dynamic_profile.models import Profile, IndicatorProfile
 
 MERGE_KEYS = set(["values", "numerators", "error"])
+
+
+def enhance_api_data(api_data):
+    dict_list = find_dicts_with_key(api_data, "values")
+    for d in dict_list:
+        raw = {}
+        enhanced = {}
+        geo_value = d["values"]["this"]
+        num_comparatives = 2
+
+        # create our containers for transformation
+        for obj in ["values", "error", "numerators", "numerator_errors"]:
+            if obj not in d:
+                raw[obj] = dict(zip(geo_data.comparative_levels, repeat(0)))
+            else:
+                raw[obj] = d[obj]
+            enhanced[obj] = OrderedDict()
+        enhanced["index"] = OrderedDict()
+        enhanced["error_ratio"] = OrderedDict()
+        comparative_sumlevs = []
+        for sumlevel in geo_data.comparative_levels:
+            # add the index value for comparatives
+            if sumlevel in raw["values"]:
+                enhanced["values"][sumlevel] = raw["values"][sumlevel]
+                enhanced["index"][sumlevel] = get_ratio(
+                    geo_value, raw["values"][sumlevel]
+                )
+
+                # add to our list of comparatives for the template to use
+                if sumlevel != "this":
+                    comparative_sumlevs.append(sumlevel)
+
+            # add the moe ratios
+            if (sumlevel in raw["values"]) and (sumlevel in raw["error"]):
+                enhanced["error"][sumlevel] = raw["error"][sumlevel]
+                enhanced["error_ratio"][sumlevel] = get_ratio(
+                    raw["error"][sumlevel], raw["values"][sumlevel], 3
+                )
+
+            # add the numerators and numerator_errors
+            if sumlevel in raw["numerators"]:
+                enhanced["numerators"][sumlevel] = raw["numerators"][sumlevel]
+
+            if (sumlevel in raw["numerators"]) and (
+                sumlevel in raw["numerator_errors"]
+            ):
+                enhanced["numerator_errors"][sumlevel] = raw["numerator_errors"][
+                    sumlevel
+                ]
+
+            if len(enhanced["values"]) >= (num_comparatives + 1):
+                break
+
+        # replace data with enhanced version
+        for obj in [
+            "values",
+            "index",
+            "error",
+            "error_ratio",
+            "numerators",
+            "numerator_errors",
+        ]:
+            d[obj] = enhanced[obj]
+
+        # api_data["geography"]["comparatives"] = comparative_sumlevs
+
+    return api_data
 
 
 class BuildIndicator(object):
@@ -25,14 +96,29 @@ class BuildIndicator(object):
         """
         This will contain any information relating to noteworthy stats about the indicator.
         By default this will return the highest value with in the indicator
+        results = 'text|number|percent'
         """
-        header = {"title": self.profile.title, "summary": self.profile.summary}
+        header = {
+            "title": self.profile.title,
+            "result": {
+                "type": "text",
+                "name": "",
+                "summary": self.profile.summary,
+                "values": {"this": ""},
+                "numerators": {"this": ""},
+            },
+            "extra_results": [],
+        }
         try:
             if self.distribution:
                 value = self.distribution[list(self.distribution.keys())[0]]
-                header.update({"value": value["name"]})
+                header["result"]["name"] = value["name"]
+                header["result"]["values"]["this"] = value["values"]["this"]
+                header["result"]["numerators"]["this"] = value["numerators"]["this"]
         except AttributeError:
-            header.update({"value": ""})
+            pass
+
+        header = enhance_api_data(header)
 
         return header
 
@@ -64,7 +150,8 @@ class BuildIndicator(object):
                 order_by=self.profile.order_by,
             )
             group_remainder(distribution, self.profile.group_remainder)
-            self.distribution = distribution
+
+            self.distribution = enhance_api_data(distribution)
             return {"stat_values": distribution, "total": total}
         except DataNotFound:
             return {}
