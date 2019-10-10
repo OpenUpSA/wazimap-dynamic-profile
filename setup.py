@@ -9,7 +9,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name="dymanic-profile",
-    version="0.13",
+    version="0.14",
     packages=find_packages(),
     include_package_data=True,
     license="MIT License",  # example license
@@ -21,7 +21,7 @@ setup(
     classifiers=[
         "Environment :: Web Environment",
         "Framework :: Django",
-        "Framework :: Django :: 1.11",  # replace "X.Y" as appropriate
+        "Framework :: Django :: 2.2",  # replace "X.Y" as appropriate
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",  # example license
         "Operating System :: OS Independent",
