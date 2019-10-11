@@ -38,6 +38,7 @@ class IndicatorProfile(models.Model):
     )
     group_remainder = models.IntegerField(default=20, null=True, blank=True)
     info = models.TextField(null=True, blank=True)
+    dataset_context = models.IntegerField(blank=True, null=True)
 
     def __str__(self):
         return self.title
