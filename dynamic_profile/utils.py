@@ -111,12 +111,17 @@ class BuildIndicator(object):
                     order_by=self.profile.order_by,
                 )
                 value = self.distribution[list(self.distribution.keys())[0]]
-                dist_data["result"]["values"][com_geo.geo_level] = value["values"][
-                    "this"
-                ]
-                dist_data["result"]["numerators"][com_geo.geo_level] = value[
-                    "numerators"
-                ]["this"]
+                if self.profile.distribution_total:
+                    dist_data["result"]["values"][com_geo.geo_level] = total
+                    dist_data["result"]["numerators"][com_geo.geo_level] = None
+                else:
+
+                    dist_data["result"]["values"][com_geo.geo_level] = value["values"][
+                        "this"
+                    ]
+                    dist_data["result"]["numerators"][com_geo.geo_level] = value[
+                        "numerators"
+                    ]["this"]
             except DataNotFound:
                 raise
         return dist_data
@@ -143,9 +148,14 @@ class BuildIndicator(object):
         try:
             if self.distribution:
                 value = self.distribution[list(self.distribution.keys())[0]]
-                header["result"]["name"] = value["name"]
-                header["result"]["values"]["this"] = value["values"]["this"]
-                header["result"]["numerators"]["this"] = value["numerators"]["this"]
+                if self.profile.distribution_total:
+                    header["result"]["type"] = "number"
+                    header["result"]["name"] = self.profile.summary
+                    header["result"]["values"]["this"] = self.total
+                else:
+                    header["result"]["name"] = value["name"]
+                    header["result"]["values"]["this"] = value["values"]["this"]
+                    header["result"]["numerators"]["this"] = value["numerators"]["this"]
                 if not self.profile.dataset_context:
                     header = self.comparative(header)
 
@@ -164,6 +174,13 @@ class BuildIndicator(object):
             "chart_title": self.profile.chart_title,
             "chart_type": self.profile.chart_type,
         }
+
+    def calculate_median_stat(self):
+        """
+        calculate the median of the distribution
+        """
+        median = calculate_median_stat(self.distribution)
+        median_income = self.profile.recode[median]
 
     def dataset_context_stat_data(self):
         """
@@ -186,13 +203,15 @@ class BuildIndicator(object):
                 )
                 group_remainder(distribution, self.profile.group_remainder)
                 self.distribution = distribution
-                return {"stat_values": distribution, "total": total}
+                self.total = total
+
+                return {"stat_values": distribution}
             except DataNotFound:
                 return {}
 
     def stat_data(self):
         try:
-            distribution, total = get_stat_data(
+            distribution, self.total = get_stat_data(
                 [self.profile.field_name],
                 self.geo,
                 self.session,
@@ -208,7 +227,7 @@ class BuildIndicator(object):
             group_remainder(distribution, self.profile.group_remainder)
 
             self.distribution = enhance_api_data(distribution)
-            return {"stat_values": self.distribution, "total": total}
+            return {"stat_values": self.distribution}
         except DataNotFound:
             return {}
 
@@ -216,9 +235,6 @@ class BuildIndicator(object):
         """
         Get results for this indicator.
         """
-        print("*************************************************")
-        print(self.profile)
-        print("*******************************************************")
 
         if self.profile.dataset_context:
             return self.dataset_context_stat_data()

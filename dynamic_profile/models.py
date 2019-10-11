@@ -26,11 +26,11 @@ class IndicatorProfile(models.Model):
     summary = models.CharField(max_length=100)
     chart_title = models.CharField(max_length=100)
     chart_type = models.CharField(max_length=20, default="histogram")
-    order_by = models.CharField(max_length=10, default="-total")
+    order_by = models.CharField(max_length=10, default="-total", blank=True, null=True)
     exclude_zero = models.BooleanField(default=False)
     percent = models.BooleanField(default=True)
     recode = HStoreField(null=True, blank=True)
-    key_order = ArrayField(models.CharField(max_length=20), null=True, blank=True)
+    key_order = ArrayField(models.CharField(max_length=100), null=True, blank=True)
     exclude = ArrayField(models.CharField(max_length=20), null=True, blank=True)
     display_order = models.IntegerField(default=1)
     parent_profile = models.ForeignKey(
@@ -39,6 +39,7 @@ class IndicatorProfile(models.Model):
     group_remainder = models.IntegerField(default=20, null=True, blank=True)
     info = models.TextField(null=True, blank=True)
     dataset_context = models.IntegerField(blank=True, null=True)
+    distribution_total = models.BooleanField(default=False)
 
     def __str__(self):
         return self.title
