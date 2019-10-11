@@ -96,24 +96,29 @@ class BuildIndicator(object):
         """
         comparative_geos = geo_data.get_comparative_geos(self.geo)
         for com_geo in comparative_geos:
-            distribution, total = get_stat_data(
-                [self.profile.field_name],
-                com_geo,
-                self.session,
-                table_universe=self.profile.universe,
-                table_dataset=self.profile.dataset,
-                exclude_zero=self.profile.exclude_zero,
-                percent=self.profile.percent,
-                recode=self.profile.recode,
-                key_order=self.profile.key_order,
-                exclude=self.profile.exclude,
-                order_by=self.profile.order_by,
-            )
-            value = self.distribution[list(self.distribution.keys())[0]]
-            dist_data["result"]["values"][com_geo.geo_level] = value["values"]["this"]
-            dist_data["result"]["numerators"][com_geo.geo_level] = value["numerators"][
-                "this"
-            ]
+            try:
+                distribution, total = get_stat_data(
+                    [self.profile.field_name],
+                    com_geo,
+                    self.session,
+                    table_universe=self.profile.universe,
+                    table_dataset=self.profile.dataset,
+                    exclude_zero=self.profile.exclude_zero,
+                    percent=self.profile.percent,
+                    recode=self.profile.recode,
+                    key_order=self.profile.key_order,
+                    exclude=self.profile.exclude,
+                    order_by=self.profile.order_by,
+                )
+                value = self.distribution[list(self.distribution.keys())[0]]
+                dist_data["result"]["values"][com_geo.geo_level] = value["values"][
+                    "this"
+                ]
+                dist_data["result"]["numerators"][com_geo.geo_level] = value[
+                    "numerators"
+                ]["this"]
+            except DataNotFound:
+                raise
         return dist_data
 
     def header(self):
@@ -125,6 +130,7 @@ class BuildIndicator(object):
 
         header = {
             "title": self.profile.title,
+            "info": self.profile.info,
             "result": {
                 "type": "name",
                 "name": "",
@@ -140,9 +146,10 @@ class BuildIndicator(object):
                 header["result"]["name"] = value["name"]
                 header["result"]["values"]["this"] = value["values"]["this"]
                 header["result"]["numerators"]["this"] = value["numerators"]["this"]
-                header = self.comparative(header)
+                if not self.profile.dataset_context:
+                    header = self.comparative(header)
 
-        except AttributeError:
+        except (AttributeError, DataNotFound):
             pass
 
         header = enhance_api_data(header)
@@ -158,10 +165,32 @@ class BuildIndicator(object):
             "chart_type": self.profile.chart_type,
         }
 
-    def calculation(self):
+    def dataset_context_stat_data(self):
         """
-        Get results for this indicator.
+        Calulate data with should have a particular context
         """
+        with dataset_context(year=str(self.profile.dataset_context)):
+            try:
+                distribution, total = get_stat_data(
+                    [self.profile.field_name],
+                    self.geo,
+                    self.session,
+                    table_universe=self.profile.universe,
+                    table_dataset=self.profile.dataset,
+                    exclude_zero=self.profile.exclude_zero,
+                    percent=self.profile.percent,
+                    recode=self.profile.recode,
+                    key_order=self.profile.key_order,
+                    exclude=self.profile.exclude,
+                    order_by=self.profile.order_by,
+                )
+                group_remainder(distribution, self.profile.group_remainder)
+                self.distribution = distribution
+                return {"stat_values": distribution, "total": total}
+            except DataNotFound:
+                return {}
+
+    def stat_data(self):
         try:
             distribution, total = get_stat_data(
                 [self.profile.field_name],
@@ -182,6 +211,19 @@ class BuildIndicator(object):
             return {"stat_values": self.distribution, "total": total}
         except DataNotFound:
             return {}
+
+    def calculation(self):
+        """
+        Get results for this indicator.
+        """
+        print("*************************************************")
+        print(self.profile)
+        print("*******************************************************")
+
+        if self.profile.dataset_context:
+            return self.dataset_context_stat_data()
+        else:
+            return self.stat_data()
 
     def meta(self):
         """
