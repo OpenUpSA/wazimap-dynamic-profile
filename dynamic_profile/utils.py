@@ -175,13 +175,6 @@ class BuildIndicator(object):
             "chart_type": self.profile.chart_type,
         }
 
-    def calculate_median_stat(self):
-        """
-        calculate the median of the distribution
-        """
-        median = calculate_median_stat(self.distribution)
-        median_income = self.profile.recode[median]
-
     def dataset_context_stat_data(self):
         """
         Calulate data with should have a particular context
@@ -211,7 +204,7 @@ class BuildIndicator(object):
 
     def stat_data(self):
         try:
-            distribution, self.total = get_stat_data(
+            self.distribution, self.total = get_stat_data(
                 [self.profile.field_name],
                 self.geo,
                 self.session,
@@ -224,9 +217,10 @@ class BuildIndicator(object):
                 exclude=self.profile.exclude,
                 order_by=self.profile.order_by,
             )
-            group_remainder(distribution, self.profile.group_remainder)
+            if self.profile.group_remainder:
+                group_remainder(self.distribution, self.profile.group_remainder)
 
-            self.distribution = enhance_api_data(distribution)
+            self.distribution = enhance_api_data(self.distribution)
             return {"stat_values": self.distribution}
         except DataNotFound:
             return {}
@@ -294,7 +288,7 @@ class BuildProfile(object):
 
     def merge(self):
         """
-        We need to go through all the indicators and check whether they have a parent profile indicator.
+        We need to go through all the indicators and check whether they have a parent indicator.
         If they do have a parent, we need to append that indicator to the parent indicator
         We will then remove all the top level indicators that have a parent.
         """
