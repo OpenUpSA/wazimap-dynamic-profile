@@ -194,8 +194,9 @@ class BuildIndicator(object):
                     exclude=self.profile.exclude,
                     order_by=self.profile.order_by,
                 )
-                group_remainder(distribution, self.profile.group_remainder)
-                self.distribution = distribution
+                if self.profile.group_remainder:
+                    group_remainder(distribution, self.profile.group_remainder)
+                self.distribution = enhance_api_data(distribution)
                 self.total = total
 
                 return {"stat_values": distribution}
