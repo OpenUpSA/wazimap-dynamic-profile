@@ -7,7 +7,12 @@ from .models import Profile, IndicatorProfile
 
 # Register your models here.
 
-admin.site.register(Profile)
+
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ("name", "display_order")
+
+
+admin.site.register(Profile, ProfileAdmin)
 
 
 class IndicatorProfileForm(forms.ModelForm):
@@ -20,6 +25,7 @@ class IndicatorProfileForm(forms.ModelForm):
 
 class IndicatorProfileAdmin(admin.ModelAdmin):
     form = IndicatorProfileForm
+    list_display = ("title", "display_order")
 
 
 admin.site.register(IndicatorProfile, IndicatorProfileAdmin)
