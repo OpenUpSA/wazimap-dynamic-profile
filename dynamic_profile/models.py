@@ -40,6 +40,7 @@ class IndicatorProfile(models.Model):
     info = models.TextField(null=True, blank=True)
     dataset_context = models.IntegerField(blank=True, null=True)
     distribution_total = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.title

@@ -25,7 +25,8 @@ class IndicatorProfileForm(forms.ModelForm):
 
 class IndicatorProfileAdmin(admin.ModelAdmin):
     form = IndicatorProfileForm
-    list_display = ("title", "display_order")
+    list_display = ("title", "profile", "active", "display_order")
+    list_filter = ("profile", "active")
 
 
 admin.site.register(IndicatorProfile, IndicatorProfileAdmin)
