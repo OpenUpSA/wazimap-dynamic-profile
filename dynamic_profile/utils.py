@@ -290,12 +290,13 @@ class BuildProfile(object):
         If they do have a parent, we need to append that indicator to the parent indicator
         We will then remove all the top level indicators that have a parent.
         """
-        for indictor in self.indicators:
-            title = indictor.get("parent_profile", None)
+        for indicator in self.indicators:
+            title = indicator.get("parent_profile", None)
             if not None:
                 for other in self.indicators:
                     if other["title"] == title:
-                        other["children"].append(indictor)
+                        other["children"].append(indicator)
+                        other["extra_results"].append(indicator["result"])
                         break
         self.indicators = [
             indictor for indictor in self.indicators if not indictor["parent_profile"]
