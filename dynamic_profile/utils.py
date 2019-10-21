@@ -216,9 +216,6 @@ class BuildIndicator(object):
                 order_by=self.profile.order_by,
             )
             if self.profile.group_remainder:
-                print("*********************************************************")
-                print(self.distribution)
-                print("**********************************************************")
                 group_remainder(self.distribution, self.profile.group_remainder)
 
             self.distribution = enhance_api_data(self.distribution)
