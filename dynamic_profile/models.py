@@ -11,6 +11,18 @@ from django.contrib.postgres.fields import HStoreField, ArrayField
 class Profile(models.Model):
     name = models.CharField(max_length=20)
     display_order = models.IntegerField(default=1)
+    geo_level = ArrayField(
+        models.CharField(max_length=20),
+        default=[
+            "country",
+            "province",
+            "district",
+            "municipality",
+            "ward",
+            "subplace",
+            "smallarea",
+        ],
+    )
 
     def __str__(self):
         return self.name
@@ -63,6 +75,18 @@ class IndicatorProfile(models.Model):
     )
     active = models.BooleanField(
         default=True, help_text="Should the this indicator be shown or not"
+    )
+    geo_level = ArrayField(
+        models.CharField(max_length=20),
+        default=[
+            "country",
+            "province",
+            "district",
+            "municipality",
+            "ward",
+            "subplace",
+            "smallarea",
+        ],
     )
 
     def __str__(self):

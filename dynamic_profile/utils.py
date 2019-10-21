@@ -271,7 +271,9 @@ class BuildProfile(object):
         self.indicators = []
 
     def create(self, cls_indicator):
-        for model_indicator in IndicatorProfile.objects.filter(profile__name=self.name):
+        for model_indicator in IndicatorProfile.objects.filter(
+            profile__name=self.name
+        ).filter(geo_level__contains=[self.geo.geo_level]):
             new_indicator = cls_indicator(self.geo, self.session, model_indicator)
             self.indicators.append(new_indicator.create())
         self.sort()
@@ -312,7 +314,10 @@ class Section(object):
         self.geo = geo
         self.session = session
         self.profiles = OrderedDict(
-            (p.name, []) for p in Profile.objects.order_by("display_order").all()
+            (p.name, [])
+            for p in Profile.objects.filter(
+                geo_level__contains=[self.geo.geo_level]
+            ).order_by("display_order")
         )
 
     def build(self, cls_profile, cls_indicator):
