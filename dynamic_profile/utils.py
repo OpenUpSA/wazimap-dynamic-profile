@@ -158,7 +158,7 @@ class BuildIndicator(object):
                 if not self.profile.dataset_context:
                     header = self.comparative(header)
 
-        except (AttributeError, DataNotFound):
+        except (AttributeError, DataNotFound, KeyError):
             pass
 
         header = enhance_api_data(header)
@@ -216,11 +216,14 @@ class BuildIndicator(object):
                 order_by=self.profile.order_by,
             )
             if self.profile.group_remainder:
+                print("*********************************************************")
+                print(self.distribution)
+                print("**********************************************************")
                 group_remainder(self.distribution, self.profile.group_remainder)
 
             self.distribution = enhance_api_data(self.distribution)
             return {"stat_values": self.distribution}
-        except DataNotFound:
+        except (DataNotFound, KeyError):
             return {}
 
     def calculation(self):
