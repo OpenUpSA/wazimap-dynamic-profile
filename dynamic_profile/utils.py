@@ -172,6 +172,7 @@ class BuildIndicator(object):
         return {
             "chart_title": self.profile.chart_title,
             "chart_type": self.profile.chart_type,
+            "chart_design": self.profile.chart_design,
         }
 
     def dataset_context_stat_data(self):
