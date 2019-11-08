@@ -1,3 +1,5 @@
+import logging
+
 from collections import OrderedDict, defaultdict
 from wazimap.models.data import DataNotFound
 from wazimap.data.utils import (
@@ -9,6 +11,7 @@ from wazimap.data.utils import (
     percent,
     current_context,
     dataset_context,
+    merge_dicts,
 )
 from census.profile import find_dicts_with_key
 from census.utils import get_ratio
@@ -17,10 +20,12 @@ from itertools import repeat
 from dynamic_profile.models import Profile, IndicatorProfile
 
 MERGE_KEYS = set(["values", "numerators", "error"])
+log = logging.getLogger(__name__)
 
 
 def enhance_api_data(api_data):
     dict_list = find_dicts_with_key(api_data, "values")
+    print(dict_list)
     for d in dict_list:
         raw = {}
         enhanced = {}
@@ -44,7 +49,6 @@ def enhance_api_data(api_data):
                 enhanced["index"][sumlevel] = get_ratio(
                     geo_value, raw["values"][sumlevel]
                 )
-
                 # add to our list of comparatives for the template to use
                 if sumlevel != "this":
                     comparative_sumlevs.append(sumlevel)
@@ -69,7 +73,6 @@ def enhance_api_data(api_data):
 
             if len(enhanced["values"]) >= (num_comparatives + 1):
                 break
-
         # replace data with enhanced version
         for obj in [
             "values",
@@ -89,6 +92,69 @@ class BuildIndicator(object):
         self.geo = geo
         self.session = session
         self.profile = profile
+
+    def context_comparative_geo(self, comp_geo):
+        """
+        Calculte the dataset_context stat_data for a comparative geo.
+        """
+        with dataset_context(year=str(self.profile.dataset_context)):
+            try:
+                distribution, total = get_stat_data(
+                    [self.profile.field_name],
+                    comp_geo,
+                    self.session,
+                    table_name=self.profile.table_name.name,
+                    exclude_zero=self.profile.exclude_zero,
+                    percent=self.profile.percent,
+                    recode=self.profile.recode,
+                    key_order=self.profile.key_order,
+                    exclude=self.profile.exclude,
+                    order_by=self.profile.order_by,
+                )
+                return distribution
+            except DataNotFound:
+                return {}
+
+    def comparative_geo(self, geo):
+        """
+        calculate the stat data for comparative geos
+        """
+        distribution, total = get_stat_data(
+            [self.profile.field_name],
+            geo,
+            self.session,
+            table_name=self.profile.table_name.name,
+            exclude_zero=self.profile.exclude_zero,
+            percent=self.profile.percent,
+            recode=self.profile.recode,
+            key_order=self.profile.key_order,
+            exclude=self.profile.exclude,
+            order_by=self.profile.order_by,
+        )
+        return distribution
+
+    def compare_geos(self):
+        """
+        Get the values for the comparative geo and add it to the main geo
+        """
+        comparative_geos = geo_data.get_comparative_geos(self.geo)
+        for comp_geo in comparative_geos:
+            try:
+                if self.profile.dataset_context:
+                    merge_dicts(
+                        self.distribution,
+                        self.context_comparative_geo(comp_geo),
+                        comp_geo.geo_level,
+                    )
+                else:
+                    merge_dicts(
+                        self.distribution,
+                        self.comparative_geo(comp_geo),
+                        comp_geo.geo_level,
+                    )
+            except KeyError:
+                log.error("Unbale to merge dicts")
+                pass
 
     def comparative(self, dist_data):
         """
@@ -181,7 +247,7 @@ class BuildIndicator(object):
         """
         with dataset_context(year=str(self.profile.dataset_context)):
             try:
-                distribution, total = get_stat_data(
+                self.distribution, self.total = get_stat_data(
                     [self.profile.field_name],
                     self.geo,
                     self.session,
@@ -193,12 +259,13 @@ class BuildIndicator(object):
                     exclude=self.profile.exclude,
                     order_by=self.profile.order_by,
                 )
-                if self.profile.group_remainder:
-                    group_remainder(distribution, self.profile.group_remainder)
-                self.distribution = enhance_api_data(distribution)
-                self.total = total
+                self.compare_geos()
 
-                return {"stat_values": distribution}
+                if self.profile.group_remainder:
+                    group_remainder(self.distribution, self.profile.group_remainder)
+
+                self.distribution = enhance_api_data(self.distribution)
+                return {"stat_values": self.distribution}
             except DataNotFound:
                 return {}
 
@@ -216,6 +283,7 @@ class BuildIndicator(object):
                 exclude=self.profile.exclude,
                 order_by=self.profile.order_by,
             )
+            self.compare_geos()
             if self.profile.group_remainder:
                 group_remainder(self.distribution, self.profile.group_remainder)
 
@@ -329,23 +397,23 @@ class Section(object):
         return self.profiles
 
 
-def merge_dicts(this, other, other_key):
-    """
-    Recursively merges 'other' dict into 'this' dict. In particular
-    it merges the leaf nodes specified in MERGE_KEYS.
-    """
-    for profile, indicators in this.items():
-        for counter, indicator in enumerate(indicators):
-            if "stat_values" in indicator:
-                for key, value in indicator["stat_values"].items():
-                    if key != "metadata":
-                        try:
-                            value["numerators"][other_key] = other[profile][counter][
-                                "stat_values"
-                            ][key]["numerators"]["this"]
-                            value["values"][other_key] = other[profile][counter][
-                                "stat_values"
-                            ][key]["values"]["this"]
-                        except KeyError:
-                            value["numerators"][other_key] = None
-                            value["values"][other_key] = None
+# def merge_dicts(this, other, other_key):
+#     """
+#     Recursively merges 'other' dict into 'this' dict. In particular
+#     it merges the leaf nodes specified in MERGE_KEYS.
+#     """
+#     for profile, indicators in this.items():
+#         for counter, indicator in enumerate(indicators):
+#             if "stat_values" in indicator:
+#                 for key, value in indicator["stat_values"].items():
+#                     if key != "metadata":
+#                         try:
+#                             value["numerators"][other_key] = other[profile][counter][
+#                                 "stat_values"
+#                             ][key]["numerators"]["this"]
+#                             value["values"][other_key] = other[profile][counter][
+#                                 "stat_values"
+#                             ][key]["values"]["this"]
+#                         except KeyError:
+#                             value["numerators"][other_key] = None
+#                             value["values"][other_key] = None
