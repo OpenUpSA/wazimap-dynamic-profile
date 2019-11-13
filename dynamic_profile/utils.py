@@ -25,7 +25,6 @@ log = logging.getLogger(__name__)
 
 def enhance_api_data(api_data):
     dict_list = find_dicts_with_key(api_data, "values")
-    print(dict_list)
     for d in dict_list:
         raw = {}
         enhanced = {}
@@ -131,6 +130,8 @@ class BuildIndicator(object):
             exclude=self.profile.exclude,
             order_by=self.profile.order_by,
         )
+        if self.profile.distribution_total:
+            return total
         return distribution
 
     def compare_geos(self):
@@ -140,6 +141,11 @@ class BuildIndicator(object):
         comparative_geos = geo_data.get_comparative_geos(self.geo)
         for comp_geo in comparative_geos:
             try:
+                if self.profile.distribution_total:
+                    return {
+                        "{}".format(comp_geo.geo_level): self.comparative_geo(comp_geo)
+                    }
+
                 if self.profile.dataset_context:
                     merge_dicts(
                         self.distribution,
@@ -156,41 +162,6 @@ class BuildIndicator(object):
                 log.error("Unbale to merge dicts")
                 pass
 
-    def comparative(self, dist_data):
-        """
-        compare result with other geos
-        """
-        comparative_geos = geo_data.get_comparative_geos(self.geo)
-        for com_geo in comparative_geos:
-            try:
-                distribution, total = get_stat_data(
-                    [self.profile.field_name],
-                    com_geo,
-                    self.session,
-                    table_name=self.profile.table_name.name,
-                    exclude_zero=self.profile.exclude_zero,
-                    percent=self.profile.percent,
-                    recode=self.profile.recode,
-                    key_order=self.profile.key_order,
-                    exclude=self.profile.exclude,
-                    order_by=self.profile.order_by,
-                )
-                value = self.distribution[list(self.distribution.keys())[0]]
-                if self.profile.distribution_total:
-                    dist_data["result"]["values"][com_geo.geo_level] = total
-                    dist_data["result"]["numerators"][com_geo.geo_level] = None
-                else:
-
-                    dist_data["result"]["values"][com_geo.geo_level] = value["values"][
-                        "this"
-                    ]
-                    dist_data["result"]["numerators"][com_geo.geo_level] = value[
-                        "numerators"
-                    ]["this"]
-            except DataNotFound:
-                raise
-        return dist_data
-
     def header(self):
         """
         This will contain any information relating to noteworthy stats about the indicator.
@@ -205,24 +176,23 @@ class BuildIndicator(object):
                 "type": "name",
                 "name": "",
                 "summary": self.profile.summary,
-                "values": {"this": ""},
-                "numerators": {"this": ""},
+                "stat_data": {},
             },
             "extra_results": [],
         }
         try:
             if self.distribution:
-                value = self.distribution[list(self.distribution.keys())[0]]
                 if self.profile.distribution_total:
+                    stat_values = {"this": self.total}
+                    stat_values.update(self.compare_geos())
+                    header["result"]["stat_data"]["values"] = stat_values
+                    header["result"]["stat_data"]["summary"] = self.profile.summary
                     header["result"]["type"] = "number"
-                    header["result"]["name"] = self.profile.summary
-                    header["result"]["values"]["this"] = self.total
                 else:
-                    header["result"]["name"] = value["name"]
-                    header["result"]["values"]["this"] = value["values"]["this"]
-                    header["result"]["numerators"]["this"] = value["numerators"]["this"]
-                if not self.profile.dataset_context:
-                    header = self.comparative(header)
+                    stat_data = self.distribution[list(self.distribution.keys())[0]]
+                    header["result"]["stat_data"] = stat_data
+                    header["result"]["stat_data"]["type"] = "name"
+                    header["result"]["stat_data"]["summary"] = self.profile.summary
 
         except (AttributeError, DataNotFound, KeyError):
             pass
