@@ -114,7 +114,7 @@ class BuildIndicator(object):
             except DataNotFound:
                 return {}
 
-    def comparative_geo(self, geo):
+    def comparative_geo(self, geo, header=False):
         """
         calculate the stat data for comparative geos
         """
@@ -130,28 +130,39 @@ class BuildIndicator(object):
             exclude=self.profile.exclude,
             order_by=self.profile.order_by,
         )
-        if self.profile.distribution_total:
+        if header:
             return total
         return distribution
+
+    def header_compare_geos(self):
+        values = {}
+        comparative_geos = geo_data.get_comparative_geos(self.geo)
+        for comp_geo in comparative_geos:
+            values.update(
+                {
+                    "{}".format(comp_geo.geo_level): self.comparative_geo(
+                        comp_geo, header=True
+                    )
+                }
+            )
+        return values
 
     def compare_geos(self):
         """
         Get the values for the comparative geo and add it to the main geo
+        "Note": for land cover we dont have provincial or country, need to skip these for
+        comparative geo.
         """
         comparative_geos = geo_data.get_comparative_geos(self.geo)
         for comp_geo in comparative_geos:
             try:
-                if self.profile.distribution_total:
-                    return {
-                        "{}".format(comp_geo.geo_level): self.comparative_geo(comp_geo)
-                    }
-
                 if self.profile.dataset_context:
-                    merge_dicts(
-                        self.distribution,
-                        self.context_comparative_geo(comp_geo),
-                        comp_geo.geo_level,
-                    )
+                    if comp_geo.geo_level not in ("country", "province"):
+                        merge_dicts(
+                            self.distribution,
+                            self.context_comparative_geo(comp_geo),
+                            comp_geo.geo_level,
+                        )
                 else:
                     merge_dicts(
                         self.distribution,
@@ -184,9 +195,10 @@ class BuildIndicator(object):
             if self.distribution:
                 if self.profile.distribution_total:
                     stat_values = {"this": self.total}
-                    stat_values.update(self.compare_geos())
+                    stat_values.update(self.header_compare_geos())
                     header["result"]["stat_data"]["values"] = stat_values
                     header["result"]["stat_data"]["summary"] = self.profile.summary
+                    header["result"]["stat_data"]["name"] = self.profile.summary
                     header["result"]["type"] = "number"
                 else:
                     stat_data = self.distribution[list(self.distribution.keys())[0]]
