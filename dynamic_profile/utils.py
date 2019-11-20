@@ -184,6 +184,7 @@ class BuildIndicator(object):
             "title": self.profile.title,
             "info": self.profile.info,
             "result": {
+                "config": True,
                 "type": "name",
                 "name": "",
                 "summary": self.profile.summary,
@@ -193,14 +194,20 @@ class BuildIndicator(object):
         }
         try:
             if self.distribution:
-                if self.profile.distribution_total:
+                if self.profile.header_result == "distribution_total":
                     stat_values = {"this": self.total}
                     stat_values.update(self.header_compare_geos())
                     header["result"]["stat_data"]["values"] = stat_values
                     header["result"]["stat_data"]["summary"] = self.profile.summary
                     header["result"]["stat_data"]["name"] = self.profile.summary
                     header["result"]["type"] = "number"
-                else:
+                elif self.profile.header_result == "highest_percent":
+                    stat_data = self.distribution[list(self.distribution.keys())[0]]
+                    header["result"]["type"] = "percentage"
+                    header["result"]["stat_data"] = stat_data
+                    header["result"]["stat_data"]["type"] = "percentage"
+                    header["result"]["stat_data"]["summary"] = self.profile.summary
+                elif self.profile.header_result == "highest_category":
                     stat_data = self.distribution[list(self.distribution.keys())[0]]
                     header["result"]["stat_data"] = stat_data
                     header["result"]["stat_data"]["type"] = "name"
