@@ -40,7 +40,7 @@ class IndicatorProfileForm(forms.ModelForm):
         header_field = cleaned_data.get("header_field")
         if order_by and key_order:
             raise forms.ValidationError("Cant set key_order with order_by")
-        if header_result and not header_field:
+        if header_result == "highest_percent" and not header_field:
             raise forms.ValidationError(
                 "You have to enter the field name that should be displayed"
             )
