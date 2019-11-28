@@ -71,8 +71,8 @@ class IndicatorProfile(models.Model):
         null=True,
         help_text="if the dataset is outside of the census and comminuty survey datasets addd a custom date for the dataset ",
     )
-    header_result = models.CharField(max_length=20, default="", blank=True)
-    header_field = models.CharField(max_length=50, default="", blank=True)
+    header_result = models.CharField(max_length=20, default="", blank=True, null=True)
+    header_field = models.CharField(max_length=50, default="", blank=True, null=True)
     distribution_total = models.BooleanField(
         default=False, help_text="Show the distribution total as part of the headers"
     )

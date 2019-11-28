@@ -29,7 +29,7 @@ class IndicatorProfileForm(forms.ModelForm):
     chart_type = forms.ChoiceField(choices=CHART_CHOICES)
     chart_design = forms.ChoiceField(choices=DESIGN_CHOICES)
     display_order = forms.ChoiceField(choices=DISPLAY_CHOICES)
-    header_result = forms.ChoiceField(choices=HEADER_CHOICES)
+    header_result = forms.ChoiceField(choices=HEADER_CHOICES, required=False)
 
     def clean(self):
         cleaned_data = super().clean()
