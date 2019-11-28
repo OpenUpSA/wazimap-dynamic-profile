@@ -202,7 +202,7 @@ class BuildIndicator(object):
                     header["result"]["stat_data"]["name"] = self.profile.summary
                     header["result"]["type"] = "number"
                 elif self.profile.header_result == "highest_percent":
-                    stat_data = self.distribution[list(self.distribution.keys())[0]]
+                    stat_data = self.distribution[self.profile.header_field]
                     header["result"]["type"] = "percentage"
                     header["result"]["stat_data"] = stat_data
                     header["result"]["stat_data"]["type"] = "percentage"

@@ -36,8 +36,14 @@ class IndicatorProfileForm(forms.ModelForm):
 
         order_by = cleaned_data.get("order_by")
         key_order = cleaned_data.get("key_order")
+        header_result = cleaned_data.get("header_result")
+        header_field = cleaned_data.get("header_field")
         if order_by and key_order:
             raise forms.ValidationError("Cant set key_order with order_by")
+        if header_result and not header_field:
+            raise forms.ValidationError(
+                "You have to enter the field name that should be displayed"
+            )
 
 
 class IndicatorProfileAdmin(admin.ModelAdmin):
@@ -60,7 +66,10 @@ class IndicatorProfileAdmin(admin.ModelAdmin):
             },
         ),
         ("DataSource", {"fields": ("table_name", "field_name")}),
-        ("Header", {"fields": ("title", "summary", "info", "header_result")}),
+        (
+            "Header",
+            {"fields": ("title", "summary", "info", "header_result", "header_field")},
+        ),
         ("Charts", {"fields": ("chart_title", "chart_design", "chart_type")}),
         (
             "Calculation",
