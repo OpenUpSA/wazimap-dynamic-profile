@@ -278,7 +278,11 @@ class BuildIndicator(object):
 
             self.distribution = enhance_api_data(self.distribution)
             return {"stat_values": self.distribution}
-        except (DataNotFound, KeyError):
+        except KeyError as error:
+            log.info("Unable to match fields: %s", error)
+            return {}
+        except DataNotFound as error:
+            log.warn("Unable to find data for this indicator: %s", error)
             return {}
 
     def calculation(self):
@@ -384,25 +388,3 @@ class Section(object):
             self.profiles[profile_name] = profile.create(cls_indicator)
 
         return self.profiles
-
-
-# def merge_dicts(this, other, other_key):
-#     """
-#     Recursively merges 'other' dict into 'this' dict. In particular
-#     it merges the leaf nodes specified in MERGE_KEYS.
-#     """
-#     for profile, indicators in this.items():
-#         for counter, indicator in enumerate(indicators):
-#             if "stat_values" in indicator:
-#                 for key, value in indicator["stat_values"].items():
-#                     if key != "metadata":
-#                         try:
-#                             value["numerators"][other_key] = other[profile][counter][
-#                                 "stat_values"
-#                             ][key]["numerators"]["this"]
-#                             value["values"][other_key] = other[profile][counter][
-#                                 "stat_values"
-#                             ][key]["values"]["this"]
-#                         except KeyError:
-#                             value["numerators"][other_key] = None
-#                             value["values"][other_key] = None
