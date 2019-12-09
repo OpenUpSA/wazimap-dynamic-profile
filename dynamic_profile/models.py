@@ -10,7 +10,7 @@ from django.contrib.postgres.fields import HStoreField, ArrayField
 
 class Profile(models.Model):
     name = models.CharField(max_length=20)
-    display_order = models.IntegerField(default=1)
+    display_order = models.IntegerField(default=1, unique=True)
     geo_level = ArrayField(
         models.CharField(max_length=20),
         default=[
