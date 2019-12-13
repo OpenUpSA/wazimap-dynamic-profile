@@ -40,7 +40,9 @@ class IndicatorProfile(models.Model):
     )
     chart_title = models.CharField(max_length=100)
     chart_type = models.CharField(max_length=20, default="histogram")
-    chart_design = models.CharField(max_length=25, default="half-width")
+    chart_design = models.CharField(
+        max_length=25, default="--half-width", null=True, blank=True
+    )
     order_by = models.CharField(max_length=10, default="-total", blank=True, null=True)
     exclude_zero = models.BooleanField(default=False, help_text="leave out 0 values")
     percent = models.BooleanField(default=True)
