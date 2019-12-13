@@ -88,6 +88,12 @@ def enhance_api_data(api_data):
 
 class BuildIndicator(object):
     def __init__(self, geo, session, profile, *args, **kwargs):
+        """
+        Args:
+            geo: Geography object
+            session: sqlalchemy session object
+            profile: Profile object.
+        """
         self.geo = geo
         self.session = session
         self.profile = profile
@@ -169,14 +175,15 @@ class BuildIndicator(object):
                         self.comparative_geo(comp_geo),
                         comp_geo.geo_level,
                     )
-            except KeyError:
-                log.error("Unbale to merge dicts")
+            except KeyError as error:
+                log.warn("Unable to merge dicts for profile %s", self.profile.title)
+                log.error("Unable to merge dicts: %s", error)
                 pass
 
     def header(self):
         """
         This will contain any information relating to noteworthy stats about the indicator.
-        By default this will return the highest value with in the indicator
+        By default this will return the highest value within the indicator
         results = 'text|number|percent'
         """
 
@@ -232,7 +239,7 @@ class BuildIndicator(object):
 
     def dataset_context_stat_data(self):
         """
-        Calulate data with should have a particular context
+        Calulate statistical data with a particular context
         """
         with dataset_context(year=str(self.profile.dataset_context)):
             try:
@@ -259,6 +266,9 @@ class BuildIndicator(object):
                 return {}
 
     def stat_data(self):
+        """
+        Calculate the statistical data
+        """
         try:
             self.distribution, self.total = get_stat_data(
                 [self.profile.field_name],
@@ -279,15 +289,21 @@ class BuildIndicator(object):
             self.distribution = enhance_api_data(self.distribution)
             return {"stat_values": self.distribution}
         except KeyError as error:
-            log.info("Unable to match fields: %s", error)
+            log.warn(
+                "Unable to calculate statistics for profile: %s", self.profile.title
+            )
+            log.warn("error: %s", error)
             return {}
         except DataNotFound as error:
+            log.warn(
+                "Unable to calculate statistics for profile: %s", self.profile.title
+            )
             log.warn("Unable to find data for this indicator: %s", error)
             return {}
 
     def calculation(self):
         """
-        Get results for this indicator.
+        Get the statistical data for this indicator
         """
 
         if self.profile.dataset_context:
@@ -327,12 +343,24 @@ class BuildProfile(object):
     """
 
     def __init__(self, name, geo, session):
+        """
+        Args:
+            name: Profile name
+            geo: Geography Object
+            session: sqlalchemy session object.
+        """
         self.name = name
         self.geo = geo
         self.session = session
         self.indicators = []
 
     def create(self, cls_indicator):
+        """
+        Create all the indicators for this profile
+
+        Args:
+            cls_indicator: class in which the indicator will be calculated
+        """
         for model_indicator in IndicatorProfile.objects.filter(
             profile__name=self.name
         ).filter(geo_level__contains=[self.geo.geo_level]):
@@ -340,6 +368,7 @@ class BuildProfile(object):
             self.indicators.append(new_indicator.create())
         self.sort()
         self.merge()
+        self.sort_children()
         return self.indicators
 
     def sort(self):
@@ -366,13 +395,27 @@ class BuildProfile(object):
             indictor for indictor in self.indicators if not indictor["parent_profile"]
         ]
 
+    def sort_children(self):
+        """
+        sort children based on their display orders
+        """
+        for indicator in self.indicators:
+            children = indicator["children"]
+            children_sort = sorted(children, key=lambda i: i["display_order"])
+            indicator["children"] = children_sort
+
 
 class Section(object):
     """
-    Build a section
+    Combine all the profiles and indicators
     """
 
     def __init__(self, geo, session):
+        """
+        Args:
+            geo: A geography object
+            session: sqlalchemy session
+        """
         self.geo = geo
         self.session = session
         self.profiles = OrderedDict(
@@ -383,6 +426,11 @@ class Section(object):
         )
 
     def build(self, cls_profile, cls_indicator):
+        """
+        Args:
+            cls_profile: class that will generate the profile
+            cls_indicator: class that the generate the indicator
+        """
         for profile_name in self.profiles.keys():
             profile = cls_profile(profile_name, self.geo, self.session)
             self.profiles[profile_name] = profile.create(cls_indicator)
