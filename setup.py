@@ -12,7 +12,7 @@ setup(
     version="0.14",
     packages=find_packages(),
     include_package_data=True,
-    install_requires=["djangorestframework>=3.9.2"],
+    install_requires=["djangorestframework==3.9.2"],
     license="MIT License",  # example license
     description="Django app to create dymanic census data for wazimap.",
     long_description=README,
